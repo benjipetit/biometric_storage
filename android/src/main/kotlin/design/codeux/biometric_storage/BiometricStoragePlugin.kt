@@ -180,7 +180,7 @@ class BiometricStoragePlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
                     CipherMode.Decrypt -> cipherForDecrypt()
                 }
 
-                val cipher = if (options.authenticationValidityDurationSeconds > -1) {
+                val cipher = if (options.authenticationValidityDurationSeconds > -1 && !options.androidBiometricOnly) {
                     null
                 } else try {
                     cipherForMode()
@@ -192,23 +192,23 @@ class BiometricStoragePlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
                     cipherForMode()
                 }
 
-                if (cipher == null) {
-                    // if we have no cipher, just try the callback and see if the
-                    // user requires authentication.
-                    try {
-                        return cb(null)
-                    } catch (e: UserNotAuthenticatedException) {
-                        logger.debug(e) { "User requires (re)authentication. showing prompt ..." }
-                    } catch (e: IllegalBlockSizeException) {
-                        resetStorage()
-                        result.error(
-                            "AuthError:${AuthenticationError.ResetBiometrics}",
-                            "auth:trying to ask for a prompt with an invalid key",
-                            "auth:trying to ask for a prompt with an invalid key"
-                        )
-                        return
-                    }
-                }
+               if (cipher == null && options.androidBiometricOnly) {
+                   // if we have no cipher, just try the callback and see if the
+                   // user requires authentication.
+                   try {
+                       return cb(null)
+                   } catch (e: UserNotAuthenticatedException) {
+                       logger.debug(e) { "User requires (re)authentication. showing prompt ..." }
+                   } catch (e: IllegalBlockSizeException) {
+                       resetStorage()
+                       result.error(
+                           "AuthError:${AuthenticationError.ResetBiometrics}",
+                           "auth:trying to ask for a prompt with an invalid key",
+                           "auth:trying to ask for a prompt with an invalid key"
+                       )
+                       return
+                   }
+               }
 
                 val promptInfo = getAndroidPromptInfo()
                 authenticate(cipher, promptInfo, options, {
@@ -441,7 +441,7 @@ class BiometricStoragePlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
             if (!options.androidBiometricOnly) {
                 logger.debug {
                     "androidBiometricOnly was false, but prior " +
-                            "to ${Build.VERSION_CODES.R} this was not supported. ignoring."
+                    "to ${Build.VERSION_CODES.R} this was not supported. ignoring."
                 }
             }
             promptBuilder
