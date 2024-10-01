@@ -120,9 +120,12 @@ class MyAppState extends State<MyApp> {
                     authenticate == CanAuthenticateResponse.success ||
                         authenticate == CanAuthenticateResponse.statusUnknown;
                 if (supportsAuthenticated) {
-                  _authStorage = await BiometricStorage().getStorage(
-                      '${baseName}_authenticated',
-                      options: StorageFileInitOptions());
+                  _authStorage = await BiometricStorage()
+                      .getStorage('${baseName}_authenticated',
+                          options: StorageFileInitOptions(
+                            authenticationValidityDurationSeconds: 1,
+                            authenticationDevicePinFallback: true,
+                          ));
                 }
                 _storage = await BiometricStorage()
                     .getStorage('${baseName}_unauthenticated',
