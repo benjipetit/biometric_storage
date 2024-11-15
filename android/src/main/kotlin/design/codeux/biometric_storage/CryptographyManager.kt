@@ -122,7 +122,6 @@ class CryptographyManagerImpl(
         assert(bytesWritten == input.size + TAG_SIZE_IN_BYTES)
         assert(cipher.iv.size == IV_SIZE_IN_BYTES)
         logger.debug { "encrypted ${input.size} (${ciphertext.size} output)" }
-//        val ciphertext = cipher.doFinal(plaintext.toByteArray(Charsets.UTF_8))
         return EncryptedData(ciphertext)
     }
 
@@ -167,7 +166,6 @@ class CryptographyManagerImpl(
             setBlockModes(ENCRYPTION_BLOCK_MODE)
             setEncryptionPaddings(ENCRYPTION_PADDING)
             setKeySize(KEY_SIZE)
-            setUserAuthenticationRequired(true)
             configure()
         }
 

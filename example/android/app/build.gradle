@@ -30,7 +30,7 @@ kotlin {
 }
 
 android {
-    compileSdkVersion 33
+    compileSdkVersion 34
     ndkVersion "21.1.6352462"
 
     compileOptions {

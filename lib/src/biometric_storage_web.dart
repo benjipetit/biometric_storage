@@ -59,4 +59,10 @@ class BiometricStoragePluginWeb extends BiometricStorage {
   ) async {
     html.window.localStorage[name] = content;
   }
+
+  @override
+  Future<bool> hasAuthMechanism() async => false;
+
+  @override
+  void setLogger(void Function(String p1) logger) {}
 }

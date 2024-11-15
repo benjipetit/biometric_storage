@@ -36,28 +36,24 @@ class BiometricStorageFile(
     private val fileV2: File
 
     private val cryptographyManager = CryptographyManager {
-        setUserAuthenticationRequired(options.authenticationRequired)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            val useStrongBox = context.packageManager.hasSystemFeature(
-                PackageManager.FEATURE_STRONGBOX_KEYSTORE
-            )
-            setIsStrongBoxBacked(useStrongBox)
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            if (options.authenticationValidityDurationSeconds == -1) {
-                setUserAuthenticationParameters(
-                    0,
-                    KeyProperties.AUTH_BIOMETRIC_STRONG
-                )
-            } else {
-                setUserAuthenticationParameters(
-                    options.authenticationValidityDurationSeconds,
-                    KeyProperties.AUTH_DEVICE_CREDENTIAL or KeyProperties.AUTH_BIOMETRIC_STRONG
-                )
+                setIsStrongBoxBacked(false)
             }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                setUserAuthenticationRequired(options.authenticationRequired)
+                if (options.androidBiometricOnly) {
+                    setUserAuthenticationParameters(
+                        0,
+                        KeyProperties.AUTH_BIOMETRIC_STRONG
+                    )
+                } else {
+                    setUserAuthenticationParameters(
+                        0,
+                        KeyProperties.AUTH_DEVICE_CREDENTIAL or KeyProperties.AUTH_BIOMETRIC_STRONG
+                    )
+                }
         } else {
-            @Suppress("DEPRECATION")
-            setUserAuthenticationValidityDurationSeconds(options.authenticationValidityDurationSeconds)
+            setUserAuthenticationValidityDurationSeconds(5)
         }
     }
 
@@ -69,14 +65,6 @@ class BiometricStorageFile(
         fileV2 = File(baseDir, fileNameV2)
 
         logger.trace { "Initialized $this with $options" }
-
-        validateOptions()
-    }
-
-    private fun validateOptions() {
-        if (options.authenticationValidityDurationSeconds == -1 && !options.androidBiometricOnly) {
-            throw IllegalArgumentException("when authenticationValidityDurationSeconds is -1, androidBiometricOnly must be true")
-        }
     }
 
     fun cipherForEncrypt() = cryptographyManager.getInitializedCipherForEncryption(masterKeyName)
@@ -91,20 +79,21 @@ class BiometricStorageFile(
     fun exists() = fileV2.exists()
 
     @Synchronized
-    fun writeFile(cipher: Cipher?, content: String) {
+    fun writeFile(cipher: Cipher?, content: String, customLogger: CustomLogger) {
         // cipher will be null if user does not need authentication or valid period is > -1
         val useCipher = cipher ?: cipherForEncrypt()
         try {
+            customLogger.trace("BiometricStorageFile.writeFile")
             val encrypted = cryptographyManager.encryptData(content, useCipher)
             fileV2.writeBytes(encrypted.encryptedPayload)
             logger.debug { "Successfully written ${encrypted.encryptedPayload.size} bytes." }
 
             return
-        } catch (ex: IOException) {
+        } catch (ex: Throwable) {
             // Error occurred opening file for writing.
-            logger.error(ex) { "Error while writing encrypted file $fileV2" }
+            customLogger.error(ex.toCompleteString())
             throw ex
-        }
+        } 
     }
 
     @Synchronized
@@ -116,8 +105,8 @@ class BiometricStorageFile(
                 val bytes = fileV2.readBytes()
                 logger.debug { "read ${bytes.size}" }
                 cryptographyManager.decryptData(bytes, useCipher)
-            } catch (ex: IOException) {
-                logger.error(ex) { "Error while writing encrypted file $fileV2" }
+            } catch (ex: Throwable) {
+                logger.error(ex.toCompleteString()) { "Error while writing encrypted file $fileV2" }
                 null
             }
         }
